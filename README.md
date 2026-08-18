@@ -1,75 +1,118 @@
-# Agent Workflow for DeepSeek Harness
+# DeepSeek Harness Agent 工作流
 
-[中文](README.zh.md) | English
+`dsh-plugin-agent-workflow` 是一个可独立安装的 DeepSeek Harness Web UI 插件。它在原有“对话”和“轨迹”之外增加“工作流”标签页，以用户对话轮次为入口，把 Agent 的模型请求、模型响应和工具调用呈现为清晰的执行链路。
 
-`dsh-plugin-agent-workflow` adds an independently installable **Workflow** tab to the DeepSeek Harness Web UI. It visualizes each user turn as a sequence of model requests, responses, and tool calls without importing, replacing, or modifying the built-in Trajectory tab.
+插件不会替换或修改 DeepSeek Harness 内置的“轨迹”功能。
 
-## Features
+## 界面预览
 
-- Fixed, independently scrolling user-turn list with prompt previews, timestamps, call totals, and lifecycle status.
-- Virtualized model-call rows with horizontally scrollable request, response, and tool cards.
-- Recorded request `system`, provider-neutral `messages[]`, and `tools` values rendered as collapsible JSON trees with copy and expanded-dialog actions.
-- Separate uncached input, cache-read, cache-write, and output token totals.
-- Running, completed, and failed tool status presentation with duration and result previews.
-- Bounded-height integration with the `dsh@0.1.0-rc.7` conversation host so the Workflow page owns its internal scrolling.
+### 工作流总览
 
-The plugin derives its view from recorded Session events. It does not reconstruct prompts from Harness source code and does not add model-visible input or tools.
+左侧按用户对话轮次组织任务，右侧按时间顺序显示本轮发生的模型调用和工具调用。页面顶部汇总用户对话数、模型调用数、工具调用数和总耗时。
 
-## Compatibility
+![工作流总览](docs/images/workflow-overview.png)
 
-Version `0.1.x` targets exactly `dsh@0.1.0-rc.7`. DeepSeek Harness pre-release client APIs may change between release candidates, so upgrade this plugin together with its declared peer dependencies.
+### 请求详情
 
-## Installation
+点击请求卡片后，可以检查该次模型请求真实记录的系统提示词、`messages[]` 消息体和工具定义。三个区域均使用可折叠 JSON 树展示，并支持复制和放大查看。
 
-Install the tagged source release into the Web profile:
+![模型请求详情](docs/images/workflow-request-details.png)
+
+## 主要功能
+
+- **按轮次浏览**：左侧固定显示当前 Session 的用户对话轮次，包括提示词摘要、开始时间、模型调用数、工具调用数和完成状态。
+- **执行链路可视化**：每次模型调用依次展示请求、响应和工具调用卡片，一行内容超出可视区域时支持横向滚动。
+- **完整请求检查**：请求详情分别展示真实记录的 `system`、提供方无关的 `messages[]` 和 `tools`，JSON 节点可以逐级展开或收起。
+- **响应内容检查**：展示 reasoning、content、工具调用以及当次模型响应的原始记录。
+- **工具执行状态**：区分运行中、完成和失败状态，并展示调用参数、执行结果、耗时和错误摘要。
+- **Token 与缓存统计**：分别显示输入、未缓存输入、缓存读取、缓存写入和输出 Token，便于分析上下文复用情况。
+- **大数据量浏览**：轮次列表和模型调用列表独立滚动，模型调用行使用虚拟化渲染，长链路不会挤压整个页面。
+
+## 数据来源
+
+工作流页面由 DeepSeek Harness Session 中真实记录的事件生成。系统提示词、消息、工具定义、响应和工具结果都来自对应模型调用的会话记录，不会从 Harness 源码中推测或重新拼接。
+
+插件只读取并展示已有记录，不会向模型请求中增加消息、提示词或工具。
+
+## 兼容版本
+
+当前 `0.1.x` 版本仅适配：
+
+```text
+dsh@0.1.0-rc.7
+```
+
+DeepSeek Harness 仍处于预发布阶段，不同 RC 版本的客户端接口可能发生变化。升级 DSH 后，需要同时安装与新版本适配的插件版本。
+
+## 安装
+
+### 安装本地 `.tgz` 包
+
+假设安装包位于当前目录：
 
 ```sh
-npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web add \
-  github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.1.0 --workspace-root
+npx --yes @deepseek-ai/dsh@0.1.0-rc.7 plugin \
+  --profile web \
+  add ./dsh-plugin-agent-workflow-0.1.0.tgz \
+  --workspace-root
 ```
 
-For testing the current `main` branch, omit the tag:
+检查安装结果：
 
 ```sh
-npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web add \
-  github:xuanyuanzhifeng/dsh-plugin-agent-workflow --workspace-root
+npx --yes @deepseek-ai/dsh@0.1.0-rc.7 plugin \
+  --profile web \
+  list --depth 0
 ```
 
-Git dependencies build from source through the package's `prepare` script. pnpm may initially block that script. If installation reports an ignored build, copy the exact package key from pnpm's message into the Web profile's `pnpm-workspace.yaml`, for example:
-
-```yaml
-allowBuilds:
-  dsh-plugin-agent-workflow: true
-```
-
-Then run the installation command again and restart `dsh web`. Only grant build permission to a source revision you trust; pinning a release tag or commit keeps the installed code stable.
-
-To remove the tab without affecting Trajectory:
+列表中出现 `dsh-plugin-agent-workflow 0.1.0` 表示安装成功。重启 Web UI 后即可看到“工作流”标签页：
 
 ```sh
-npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web remove \
-  dsh-plugin-agent-workflow --workspace-root
+npx --yes @deepseek-ai/dsh@0.1.0-rc.7 web
 ```
 
-## Development
+### 从 GitHub 安装
 
-Requires Node.js `^22.19.0` or `>=24.0.0` and pnpm 11.
+仓库发布 `v0.1.0` 标签后，可以直接安装固定版本：
+
+```sh
+npx --yes @deepseek-ai/dsh@0.1.0-rc.7 plugin \
+  --profile web \
+  add github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.1.0 \
+  --workspace-root
+```
+
+固定 Release 标签或 commit 可以避免安装内容随分支变化。只有在信任源码的情况下，才应允许包管理器执行 Git 依赖的构建脚本。
+
+## 卸载
+
+```sh
+npx --yes @deepseek-ai/dsh@0.1.0-rc.7 plugin \
+  --profile web \
+  remove dsh-plugin-agent-workflow \
+  --workspace-root
+```
+
+卸载后重启 DSH Web。该操作只移除独立的“工作流”插件，不会影响内置的“轨迹”标签页。
+
+## 本地开发与打包
+
+需要 Node.js `^22.19.0` 或 `>=24.0.0`，以及 pnpm 11。
 
 ```sh
 pnpm install
-pnpm run build
 pnpm run typecheck
 pnpm test
 pnpm pack
 ```
 
-`pnpm run build` emits the host entries, browser closure-factory bundle, inlined CSS modules, source map, and declarations under `lib/`. `pnpm test` rebuilds first so the client-bundle test exercises the artifact that users install.
+`pnpm test` 会先构建宿主入口和浏览器插件包。`pnpm pack` 生成可直接安装的 `dsh-plugin-agent-workflow-<version>.tgz` 文件。
 
-## Known limitations
+## 已知限制
 
-- Summaries cover the Session history loaded by the client. The view requests older pages while open but cannot count an unavailable prefix.
-- JSON expansion and selected-card state are local UI state without deep-link URLs.
-- Multiple tool calls from one response are displayed as a horizontally scrollable linear sequence rather than a branching graph.
+- 汇总数据只覆盖客户端能够加载的 Session 历史；无法取得的更早事件不会计入统计。
+- JSON 展开状态和卡片选中状态保存在当前页面中，不提供可分享的深链接。
+- 同一次响应中的多个工具调用以可横向滚动的线性序列展示，不绘制并行分支图。
 
 ## License
 
