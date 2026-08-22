@@ -223,6 +223,10 @@ function finalNode(
         firstTokenTime: state.firstTokenTime ?? null,
         completedTime: event.time,
       },
+      // rc.8 records a cancelled turn's delivered prefix as an
+      // assistant/message event with `interrupted: true`; carry the marker
+      // so the request cannot be mistaken for a completed generation.
+      ...(event.data.interrupted === true ? { interrupted: true as const } : {}),
     }
   }
   const boundary = closedBoundary(context)
@@ -256,9 +260,6 @@ function assistantRequest(
     startedAt: state.startTime,
     completedAt: node?.time ?? boundary?.time ?? null,
     status,
-    ...(node !== undefined && node.interrupted !== true
-      ? { completedSeq: node.seq }
-      : boundary === undefined ? {} : { completedSeq: boundary.seq }),
     ...(state.retry === undefined
       ? {}
       : {
@@ -267,12 +268,20 @@ function assistantRequest(
         ...(state.retry.maxRetries === undefined ? {} : { maxRetries: state.retry.maxRetries }),
         retryDelayMs: state.retry.delayMs,
       }),
-    ...(node === undefined || node.interrupted === true
+    // rc.8 semantics: any durable assistant message — an interrupted prefix
+    // included — carries a message id and owns its request seq. Only a
+    // chunk-only interruption fallback lacks one.
+    ...(node?.messageId === undefined
       ? {}
       : {
         resultSeq: node.seq,
         ...(node.provenance === undefined ? {} : { provenance: node.provenance }),
       }),
+    // Workflow extension: a chunk-only fallback has no durable message to
+    // anchor message assembly, so retain the closing boundary as its edge.
+    ...(node?.messageId !== undefined || boundary === undefined
+      ? {}
+      : { completedSeq: boundary.seq }),
     ...(state.usage === undefined ? {} : { usage: state.usage }),
   }
 }

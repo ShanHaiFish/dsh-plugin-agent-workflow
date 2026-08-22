@@ -9,7 +9,8 @@ import type { Message } from '@deepseek-ai/dsh-llm/types'
 export type WorkflowAssistantRequest = Extract<RequestView, { purpose: 'assistant' }> & {
   /** Complete provider-neutral messages array reconstructed at dispatch. */
   readonly messages?: readonly Message[]
-  /** Sequence that settled the request, including interrupted requests. */
+  /** Closing boundary seq retained when a chunk-only interruption fallback
+   *  produced no durable assistant/message event to anchor message assembly. */
   readonly completedSeq?: number
 }
 
