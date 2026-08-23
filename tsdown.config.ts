@@ -96,6 +96,16 @@ const clientConfig: UserConfig = {
     // plugin closure so a runtime require can never miss the table.
     neverBundle: (id: string) => EXTERNAL_SET.has(id),
     alwaysBundle: (id: string) => !EXTERNAL_SET.has(id),
+    // Standalone equivalent of the upstream client-bundle purity gate: fail
+    // the build if a future value import silently pulls an unreviewed package
+    // into the browser closure.
+    onlyBundle: [
+      '@deepseek-ai/dsh-session',
+      '@tanstack/virtual-core',
+      '@tanstack/react-virtual',
+      'lucide-react',
+      'react-json-view-lite',
+    ],
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),

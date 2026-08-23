@@ -11,7 +11,10 @@ import { EMPTY_WORKFLOW_SNAPSHOT } from '../src/client/projection/snapshot-build
 
 afterEach(cleanup)
 
-function bench() {
+function bench(options?: {
+  readonly workflowBefore?: unknown
+  readonly workflowAfter?: unknown
+}) {
   const eventDefinitions: { kind: string }[] = []
   const viewDefinitions: { target: string }[] = []
   const slotEntries: {
@@ -22,9 +25,15 @@ function bench() {
       inject: (id: SessionId) => unknown
     }
   }[] = []
+  let loaded = false
+  const workflowBefore = options?.workflowBefore ?? EMPTY_WORKFLOW_SNAPSHOT
+  const workflowAfter = options?.workflowAfter ?? workflowBefore
   const session = {
-    getSnapshot: () => ({ marker: 1 }),
-    loadOlder: () => Promise.resolve(),
+    getSnapshot: () => ({
+      marker: Symbol(),
+      views: new Map([['workflow', loaded ? workflowAfter : workflowBefore]]),
+    }),
+    loadOlder: async () => { loaded = true },
   }
   const ctx = {
     effect: (install: () => () => void) => install(),
@@ -69,6 +78,21 @@ describe('Workflow plugin registration', () => {
     expect(entry?.options.inject('session-1' as SessionId)).toMatchObject({ loadOlder: expect.any(Function) })
     expect(result.viewDefinitions.map(definition => definition.target)).toContain('workflow')
     expect(result.eventDefinitions.some(definition => definition.kind === 'workflow-assistant-step')).toBe(true)
+  })
+
+  it('detects paging changes from the Workflow view rather than raw Session snapshot identity', async () => {
+    const unchanged = bench()
+    const unchangedLoadOlder = unchanged.slotEntries[0]?.options.inject('session-1' as SessionId) as {
+      loadOlder: () => Promise<boolean>
+    }
+    expect(await unchangedLoadOlder.loadOlder()).toBe(false)
+
+    const next = { ...EMPTY_WORKFLOW_SNAPSHOT, eventNodes: [] }
+    const changed = bench({ workflowAfter: next })
+    const changedLoadOlder = changed.slotEntries[0]?.options.inject('session-1' as SessionId) as {
+      loadOlder: () => Promise<boolean>
+    }
+    expect(await changedLoadOlder.loadOlder()).toBe(true)
   })
 
   it('switches a tool result from live loading to completed success', () => {
