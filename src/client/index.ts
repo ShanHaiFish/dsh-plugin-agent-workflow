@@ -44,9 +44,12 @@ export function apply(ctx: Context): void {
       throw new Error(`ui-workflow: session "${sessionId}" is unavailable`)
     }
     return async () => {
-      const before = session.getSnapshot()
+      // rc.8 session paging returns void; detect real view growth by
+      // comparing the Workflow view snapshot before and after, matching the
+      // upstream trajectory plugin's change detection.
+      const before = session.getSnapshot().views.get('workflow')
       await session.loadOlder()
-      return session.getSnapshot() !== before
+      return session.getSnapshot().views.get('workflow') !== before
     }
   }
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
