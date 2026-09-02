@@ -32,13 +32,15 @@ src/
   index.ts                宿主入口（浏览器-only 插件，apply 为空实现）
   invariant.ts            运行时不变量助手（导出为 ./invariant）
   client/
-    index.ts              浏览器插件入口：注册 locale、投影注册器、conversation.view 槽 'workflow'
+    index.ts              浏览器插件入口：注册 locale、uiConversation 事件/视图注册器、
+                          conversation.view 槽 'workflow'（注入工厂订阅激活工作流目标）
     locales.ts            zh/en 词典（NS 'workflow'）
     workflow-model.ts     从 Session 记录派生展示模型（纯函数，可独立测试）
     WorkflowView.tsx      “工作流”页主组件（独立滚动 + 虚拟化渲染）
     WorkflowJsonInspector.tsx  可折叠 JSON 树组件（请求/响应正文检视）
     projection/           投影注册：assistant / compaction / message / request-header /
-                          surface / tool 定义 + snapshot-builder（装配工作流视图）+ contract
+                          surface / tool 定义 + snapshot-builder（装配工作流视图）+
+                          contract（类型契约）+ event-projection（内联块/来源辅助函数）
 tests/
   *.client.spec.ts(x)     vitest 单测（include: tests/**/*.spec.ts(x)）
   mocks/                  ui-primitives 替身（vitest 别名指向）
@@ -53,14 +55,14 @@ docs/images/              README 界面截图
 - CI 质量闸门 = typecheck + test + pack（`.github/workflows/ci.yml`）；三者在本地推代码前都必须通过。
 - 只读 Session 已记录的事件并展示，不得向模型请求注入消息、提示词或工具（`README.md`「数据来源」）。
 - 适配面固定 dsh@0.1.2-alpha.4：全部 `@deepseek-ai/*` 依赖钉在 `0.1.2-alpha.4`（`package.json`）；升级 DSH 需同步升级本插件依赖（`README.md`「兼容版本」）。
-- 发布用 `v0.2.x` 标签，GitHub 安装固定版本形如 `github:<owner>/<repo>#v0.2.0`（`README.md`「从 GitHub 安装」）。
+- 发布用 `v0.2.x` 标签，GitHub 安装固定版本形如 `github:<owner>/<repo>#v0.2.1`（`README.md`「从 GitHub 安装」）。
 - 安装行为唯一由 `cordis.patch.yml` 定义（插入 `ui-workflow` 行）；不得改动内置“轨迹”功能。
 
 ## 改哪块之前先读什么
 
 | 区域 | 先读 |
 |------|------|
-| 工作流视图与投影 | `src/client/projection/contract.ts`（契约）+ 对应 `*-definition.ts` + `snapshot-builder.ts` |
+| 工作流视图与投影 | `src/client/index.ts`（服务注入与目标激活）+ `src/client/projection/contract.ts`（契约）+ 对应 `*-definition.ts` + `snapshot-builder.ts` |
 | 数据派生逻辑 | `src/client/workflow-model.ts` |
 | JSON 检视组件 | `src/client/WorkflowJsonInspector.tsx` |
 | 构建 / 打包配置 | `tsdown.config.ts`（externals / onlyBundle / CSS 内联） |
@@ -73,6 +75,8 @@ docs/images/              README 界面截图
 - 客户端产物是 CJS + `window.__ModuleLoader__.load(...)` 包装（`tsdown.config.ts` 的 banner/footer）；输出固定为 `lib/client.js`，入口名与 outDir 不许改。
 - 新增运行时依赖（值导入）必须进 `tsdown.config.ts` 的 `onlyBundle` 白名单，否则构建失败；`CLIENT_EXTERNALS`（react、cordis、dsh-client-ui-primitives）保持外部 import，不打包。
 - CSS 只能用 `.module.css`：由 tsdown 的 cssModulePlugin 内联为运行时注入的 `<style data-plugin-css>`（自动去重）；不要引入普通 CSS 或 CSS 框架。
+- 工作流视图数据契约（alpha.4）：视图经 `conversation.view` 的**外壳标准钩子** `useConversation` 读取 `views.get('workflow')`，不依赖插件自定义钩子；工作流目标由 `src/client/index.ts` 的槽注入工厂对 `uiConversation.binding(id).target('workflow')` 显式 `subscribe` 激活；轮次计时由装配后的 assistant 请求自推导（不要回退到 chat legacy 切片或自定义标准钩子）。
+- 客户端类型面依赖若干 `@deepseek-ai/*` 包的 module augmentation（`dsh-client-ui-session`（useSession/uiSession）、`dsh-client-ui-renderer`（ctx.slots）、`dsh-api-session-controller`（ctx.sessions/SessionFace）、`dsh-llm-retry`（`llm/retry` 事件）等）：依赖以 `import type {} from '...'` 形式在 `src/client/index.ts` 引入才生效；它们只是 devDependency（产出的 d.ts 不引用，安装消费方无需声明）。
 - 测试禁止直接 import 真实的 `@deepseek-ai/dsh-client-ui-primitives`——`vitest.config.ts` 已把它别名到 `tests/mocks/`。
 - 包管理器一律 pnpm（`packageManager: pnpm@11.7.0`，CI 用 `--frozen-lockfile`）；改依赖必须同步 `pnpm-lock.yaml`。
 - `lib/`、`*.tgz`、`coverage/` 不提交（`.gitignore`）。
