@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { apply, inject } from '../src/client/index.ts'
 import { WorkflowToolResult, WorkflowView } from '../src/client/WorkflowView.tsx'
 import { EMPTY_WORKFLOW_SNAPSHOT } from '../src/client/projection/snapshot-builder.ts'
@@ -29,11 +29,11 @@ function bench(options?: {
   const workflowBefore = options?.workflowBefore ?? EMPTY_WORKFLOW_SNAPSHOT
   const workflowAfter = options?.workflowAfter ?? workflowBefore
   const session = {
-    getSnapshot: () => ({
-      marker: Symbol(),
-      views: new Map([['workflow', loaded ? workflowAfter : workflowBefore]]),
-    }),
     loadOlder: async () => { loaded = true },
+  }
+  const targetSource = {
+    getSnapshot: () => loaded ? workflowAfter : workflowBefore,
+    subscribe: () => () => {},
   }
   const ctx = {
     effect: (install: () => () => void) => install(),
@@ -41,17 +41,20 @@ function bench(options?: {
       register: () => () => {},
       bind: () => (key: string) => key === 'view.workflow' ? 'Workflow' : key,
     },
-    conversationEvents: {
-      register: (definition: { kind: string }) => {
-        eventDefinitions.push(definition)
-        return () => {}
+    uiConversation: {
+      events: {
+        register: (definition: { kind: string }) => {
+          eventDefinitions.push(definition)
+          return () => {}
+        },
       },
-    },
-    conversationViews: {
-      register: (definition: { target: string }) => {
-        viewDefinitions.push(definition)
-        return () => {}
+      views: {
+        register: (definition: { target: string }) => {
+          viewDefinitions.push(definition)
+          return () => {}
+        },
       },
+      binding: () => ({ target: () => targetSource }),
     },
     sessions: { binding: () => ({ session }) },
     slots: {
@@ -71,7 +74,7 @@ describe('Workflow plugin registration', () => {
   it('registers only the independently installable Workflow tab', () => {
     const result = bench()
     const entry = result.slotEntries.at(0)
-    expect(inject).toEqual(['slots', 'conversationEvents', 'conversationViews', 'sessions', 'locale'])
+    expect(inject).toEqual(['slots', 'sessions', 'uiConversation', 'locale'])
     expect(entry?.options.id).toBe('workflow')
     expect(entry?.options.order).toBe(15)
     expect(entry?.options.label()).toBe('Workflow')
@@ -80,7 +83,7 @@ describe('Workflow plugin registration', () => {
     expect(result.eventDefinitions.some(definition => definition.kind === 'workflow-assistant-step')).toBe(true)
   })
 
-  it('detects paging changes from the Workflow view rather than raw Session snapshot identity', async () => {
+  it('detects paging changes from the Workflow target rather than raw Session snapshot identity', async () => {
     const unchanged = bench()
     const unchangedLoadOlder = unchanged.slotEntries[0]?.options.inject('session-1' as SessionId) as {
       loadOlder: () => Promise<boolean>
@@ -108,14 +111,16 @@ describe('Workflow plugin registration', () => {
   })
 
   it('opts into the conversation height contract so its internal panes can scroll', () => {
-    const snapshot = {
-      views: new Map([['workflow', EMPTY_WORKFLOW_SNAPSHOT]]),
-      turnTimings: new Map(),
-      hasMore: false,
-      loadingOlder: false,
+    const sessionSnapshot = { hasMore: false, loadingOlder: false }
+    const conversationSnapshot = {
+      views: { get: () => undefined },
+      activeTargets: new Set<string>(),
     }
     const props = {
-      useSession: (selector: (value: typeof snapshot) => unknown) => selector(snapshot),
+      useSession: (selector: (value: typeof sessionSnapshot) => unknown) =>
+        selector(sessionSnapshot),
+      useConversation: (selector: (value: typeof conversationSnapshot) => unknown) =>
+        selector(conversationSnapshot),
       loadOlder: () => Promise.resolve(false),
       t: (key: string) => key,
     } as unknown as ComponentProps<typeof WorkflowView>

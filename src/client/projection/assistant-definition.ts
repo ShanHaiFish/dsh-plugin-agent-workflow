@@ -2,11 +2,12 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {
   AssistantBlock, AssistantMessageNode, ConversationLocation, ConversationMatch,
   ConversationNodeContext, ConversationNodeDefinition, PartialAssistant,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-llm-retry/types'
 import {
   displayFailureMessage, emptyAssistantBlock, isTokenDelta, toAssistantBlock,
   toAssistantBlocks,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from './event-projection.ts'
 import type { WorkflowAssistantRequest } from './contract.ts'
 import { workflowNode } from './definition-common.ts'
 
@@ -413,6 +414,6 @@ const workflowTurnEndDefinition: ConversationNodeDefinition<TurnEndState> = {
  * @param ctx - Plugin context receiving the Definitions.
  */
 export function registerWorkflowAssistantDefinition(ctx: Context): void {
-  ctx.conversationEvents.register(workflowAssistantDefinition)
-  ctx.conversationEvents.register(workflowTurnEndDefinition)
+  ctx.uiConversation.events.register(workflowAssistantDefinition)
+  ctx.uiConversation.events.register(workflowTurnEndDefinition)
 }

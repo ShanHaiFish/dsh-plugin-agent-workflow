@@ -39,7 +39,6 @@ describe('Workflow tsdown client artifact', () => {
       ['react', await import('react')],
       ['react/jsx-runtime', await import('react/jsx-runtime')],
       ['react-dom', await import('react-dom')],
-      ['@deepseek-ai/dsh-client-runtime/client', {}],
       ['@deepseek-ai/dsh-client-ui-primitives', {}],
     ])
     const exports = handoff!.factory((specifier) => {
@@ -50,9 +49,10 @@ describe('Workflow tsdown client artifact', () => {
     })
     expect(exports.apply).toBeTypeOf('function')
     expect(exports.inject).toEqual([
-      'slots', 'conversationEvents', 'conversationViews', 'sessions', 'locale',
+      'slots', 'sessions', 'uiConversation', 'locale',
     ])
     expect(requested).not.toContain('@deepseek-ai/dsh-client-ui-trajectory/client')
+    expect(requested).not.toContain('@deepseek-ai/dsh-client-runtime/client')
     expect(document.querySelectorAll(`style[data-plugin=${JSON.stringify(PLUGIN_ID)}]`).length).toBeGreaterThan(0)
   })
 })

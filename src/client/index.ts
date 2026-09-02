@@ -1,9 +1,16 @@
 /** Browser plugin registering the visual Workflow conversation view. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+// Type-only augmentation imports: pull the alpha.4 client type merge surface
+// (ctx.slots / ctx.sessions / ctx.uiConversation / the session standard
+// hooks: useSession) into the TypeScript program.
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { en, NS, zh } from './locales.ts'
 import { registerWorkflowAssistantDefinition } from './projection/assistant-definition.ts'
 import { registerWorkflowCompactionDefinitions } from './projection/compaction-definition.ts'
@@ -24,8 +31,8 @@ export type {
 } from './workflow-model.ts'
 export type { WorkflowKey } from './locales.ts'
 
-/** Required services: view slots, Workflow projection registries, Session paging, and localization. */
-export const inject = ['slots', 'conversationEvents', 'conversationViews', 'sessions', 'locale']
+/** Required services: view slots, Session binding, Workflow registries, and localization. */
+export const inject = ['slots', 'sessions', 'uiConversation', 'locale']
 
 /** Register the independently installable Workflow view tab. */
 export function apply(ctx: Context): void {
@@ -38,18 +45,20 @@ export function apply(ctx: Context): void {
   registerWorkflowCompactionDefinitions(ctx)
   registerWorkflowConversationView(ctx)
   const t = ctx.locale.bind(NS)
+
   const loadOlder = (sessionId: SessionId): (() => Promise<boolean>) => {
     const session = ctx.sessions.binding(sessionId)?.session
     if (session === undefined) {
       throw new Error(`ui-workflow: session "${sessionId}" is unavailable`)
     }
+    const workflow = ctx.uiConversation.binding(sessionId).target('workflow')
     return async () => {
-      // rc.8 session paging returns void; detect real view growth by
-      // comparing the Workflow view snapshot before and after, matching the
-      // upstream trajectory plugin's change detection.
-      const before = session.getSnapshot().views.get('workflow')
+      // alpha.4 session paging returns void; detect real view growth by
+      // comparing the Workflow target snapshot before and after, matching the
+      // upstream trajectory view's change detection.
+      const before = workflow.getSnapshot()
       await session.loadOlder()
-      return session.getSnapshot().views.get('workflow') !== before
+      return workflow.getSnapshot() !== before
     }
   }
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
@@ -58,8 +67,14 @@ export function apply(ctx: Context): void {
     order: 15,
     locale: NS,
     label: () => t('view.workflow'),
-    inject: (sessionId: SessionId): WorkflowViewInjected => ({
-      loadOlder: loadOlder(sessionId),
-    }),
+    inject: (sessionId: SessionId): WorkflowViewInjected => {
+      // Activate the Workflow target for this Session: subscribing forces the
+      // assembly engine to materialize the target for its remaining lifetime,
+      // independent of which standard hooks the shell delivers to the view.
+      ctx.uiConversation.binding(sessionId).target('workflow').subscribe(() => {})
+      return {
+        loadOlder: loadOlder(sessionId),
+      }
+    },
   }, WorkflowView))
 }

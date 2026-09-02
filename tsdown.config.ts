@@ -8,12 +8,16 @@ const PLUGIN_ID = 'dsh-plugin-agent-workflow'
 const CSS_MODULE_PREFIX = '\0workflow-css-module:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 /**
- * Module-table rows the running web shell already provides (rc.8 baseline):
- * React, Cordis, and the runtime / primitives client modules. Everything else
- * this plugin value-imports is inlined by the bundle, exactly like upstream
- * client plugins (dsh-session is an inline-safe wire layer; react-virtual,
- * lucide-react and react-json-view-lite carry no cross-plugin identity).
- * Type-only imports are erased at build time and never reach this list.
+ * Module-table rows the running web shell already provides (alpha.4 baseline):
+ * React, Cordis, and the primitives client module. The rc.8 runtime module
+ * (`@deepseek-ai/dsh-client-runtime/client`) no longer exists in alpha.4 —
+ * conversation types and projection registries moved into
+ * `@deepseek-ai/dsh-client-ui-conversation`, consumed here as erased types.
+ * Everything else this plugin value-imports is inlined by the bundle, exactly
+ * like upstream client plugins (dsh-session is an inline-safe wire layer;
+ * react-virtual, lucide-react and react-json-view-lite carry no cross-plugin
+ * identity). Type-only imports are erased at build time and never reach this
+ * list.
  */
 const CLIENT_EXTERNALS: readonly string[] = [
   'react',
@@ -21,7 +25,6 @@ const CLIENT_EXTERNALS: readonly string[] = [
   'react-dom',
   'react-dom/client',
   '@deepseek-ai/cordis',
-  '@deepseek-ai/dsh-client-runtime/client',
   '@deepseek-ai/dsh-client-ui-primitives',
 ]
 const EXTERNAL_SET = new Set<string>(CLIENT_EXTERNALS)

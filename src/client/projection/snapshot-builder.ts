@@ -1,9 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   AssistantMessageNode, ConversationNode, ConversationPromptSnapshot,
-  ConversationViewBuilder, ConversationViewDefinition,
+  ConversationTimelineSnapshot, ConversationViewBuilder, ConversationViewDefinition,
   ToolCallBlock,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {
   WorkflowAssistantRequest,
   WorkflowConversationViewNode, WorkflowRequestHeaderState, WorkflowSurfaceRecord,
@@ -193,6 +193,7 @@ export class WorkflowSnapshotBuilder implements ConversationViewBuilder<
 
   replace(input: {
     readonly nodes: readonly WorkflowConversationViewNode[]
+    readonly timeline: ConversationTimelineSnapshot
   }): WorkflowSnapshot {
     this.nodes.clear()
     for (const node of input.nodes) this.nodes.set(node.key, node)
@@ -202,6 +203,7 @@ export class WorkflowSnapshotBuilder implements ConversationViewBuilder<
 
   apply(input: {
     readonly upserts: readonly WorkflowConversationViewNode[]
+    readonly timeline: ConversationTimelineSnapshot
   }): WorkflowSnapshot {
     let structural = false
     for (const node of input.upserts) {
@@ -333,6 +335,6 @@ export const workflowViewDefinition: ConversationViewDefinition<
  * @param ctx - Plugin context receiving the view Definition.
  */
 export function registerWorkflowConversationView(ctx: Context): void {
-  ctx.conversationViews.register(workflowViewDefinition)
+  ctx.uiConversation.views.register(workflowViewDefinition)
 }
 /* jscpd:ignore-end */

@@ -1,7 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   ConversationNodeDefinition,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
+import type { SessionEventLike } from '@deepseek-ai/dsh-api-session-controller/client'
 import {
   deriveEventMessage,
   isAppendSurfaceEvent, isReplacementSurfaceEvent,
@@ -9,10 +11,16 @@ import {
 import { workflowNode } from './definition-common.ts'
 import type { WorkflowSurfaceRecord } from './contract.ts'
 
+/** Session events are plain names; compact history rows use `chunkrow/*` and carry no surface markers. */
+function isSessionEvent(event: SessionEventLike): event is SessionEvent {
+  return !event.type.startsWith('chunkrow/')
+}
+
 const workflowSurfaceDefinition: ConversationNodeDefinition<WorkflowSurfaceRecord> = {
   kind: 'workflow-surface-event',
   target: 'workflow',
-  match: event => isAppendSurfaceEvent(event) || isReplacementSurfaceEvent(event)
+  match: event => isSessionEvent(event)
+    && (isAppendSurfaceEvent(event) || isReplacementSurfaceEvent(event))
     ? { id: String(event.seq), role: 'start' }
     : null,
   start: (_context, match) => {
@@ -40,5 +48,5 @@ const workflowSurfaceDefinition: ConversationNodeDefinition<WorkflowSurfaceRecor
  * @param ctx - Plugin context receiving the Definition.
  */
 export function registerWorkflowSurfaceDefinition(ctx: Context): void {
-  ctx.conversationEvents.register(workflowSurfaceDefinition)
+  ctx.uiConversation.events.register(workflowSurfaceDefinition)
 }

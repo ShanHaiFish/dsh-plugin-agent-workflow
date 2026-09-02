@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {
   ConversationMatch, ConversationNodeContext, ConversationNodeDefinition,
   RunningToolCall, ToolCallBlock, ToolResultNode,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-tools/types'
 import { workflowNode } from './definition-common.ts'
 
@@ -37,7 +37,6 @@ function rootCall(match: ConversationMatch): RunningToolCall {
     turn: match.event.data.turn,
     step: match.event.data.step,
     time: match.event.time,
-    callView: match.view?.for === 'call' ? match.view.view : null,
     subCalls: [],
   }
 }
@@ -59,8 +58,6 @@ function rootResult(
     isError: result.isError === true,
     ...(match.event.data.error === undefined ? {} : { error: match.event.data.error }),
     meta: match.event.data.meta,
-    callView: previous?.callView ?? null,
-    resultView: match.view?.for === 'result' ? match.view.view : null,
     subCalls: [],
   }
 }
@@ -83,7 +80,6 @@ function childCall(match: ConversationMatch, data: DispatchData): RunningToolCal
     turn: locationTurn(match),
     step: locationStep(match),
     time: match.event.time,
-    callView: null,
     subCalls: [],
   }
 }
@@ -102,8 +98,6 @@ function childResult(
     callTime: previous === undefined || 'kind' in previous ? null : previous.time,
     content: data.content ?? [],
     isError: data.isError === true,
-    callView: null,
-    resultView: null,
     subCalls: [],
   }
 }
@@ -194,8 +188,6 @@ function projectCall(
     content: [],
     isError: true,
     error: { name: 'Interrupted', code: 'interrupted' },
-    callView: block.callView,
-    resultView: null,
     subCalls,
   }
 }
@@ -268,5 +260,5 @@ const workflowToolDefinition: ConversationNodeDefinition<ToolState> = {
  * @param ctx - Plugin context receiving the Definition.
  */
 export function registerWorkflowToolDefinition(ctx: Context): void {
-  ctx.conversationEvents.register(workflowToolDefinition)
+  ctx.uiConversation.events.register(workflowToolDefinition)
 }

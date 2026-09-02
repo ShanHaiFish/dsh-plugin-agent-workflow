@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {
   ConversationMatch, ConversationNodeDefinition, ConversationPromptSnapshot,
   RequestPromptChange,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { workflowNode } from './definition-common.ts'
 import type { WorkflowRequestHeaderState } from './contract.ts'
 
@@ -78,6 +78,6 @@ const workflowRequestHeaderDefinition: ConversationNodeDefinition<WorkflowReques
  * @param ctx - Plugin context receiving the Definition.
  */
 export function registerWorkflowRequestHeaderDefinition(ctx: Context): void {
-  ctx.conversationEvents.register(workflowRequestHeaderDefinition)
+  ctx.uiConversation.events.register(workflowRequestHeaderDefinition)
 }
 /* jscpd:ignore-end */

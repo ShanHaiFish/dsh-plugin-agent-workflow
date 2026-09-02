@@ -380,6 +380,32 @@
 .jsonDialogBody .jsonTree { font-size: 12px; line-height: 20px; }
 .empty { display: grid; min-height: 160px; place-items: center; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
 
+.debug {
+  display: block;
+  margin-top: 8px;
+  max-width: 480px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.debug summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.debug pre {
+  margin: 8px 0 0;
+  padding: 8px;
+  overflow: auto;
+  background: var(--dsw-alias-bg-layer-0);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {

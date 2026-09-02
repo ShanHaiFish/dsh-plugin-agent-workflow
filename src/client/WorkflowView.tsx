@@ -9,7 +9,10 @@ import {
   AlertCircle, ArrowRight, Bot, CheckCircle2, ChevronDown, ChevronUp,
   Clock3, LoaderCircle, MessageSquareText, Send, Workflow as WorkflowIcon, Wrench,
 } from 'lucide-react'
-import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {
+  ConversationSnapshot, ConvViewProps,
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import { CodeBlock } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { deriveWorkflowLayout } from './projection/layout.ts'
@@ -481,12 +484,21 @@ function CallRow({
 
 /** Full-height Workflow conversation view. */
 export function WorkflowView({
-  useSession, loadOlder, t,
+  useSession, useConversation, loadOlder, t,
 }: ConvViewProps & InjectFace<WorkflowViewInjected> & PropsLocale<'workflow'>) {
-  const inspection = useSession(snapshot => snapshot.views.get('workflow') ?? EMPTY_WORKFLOW_SNAPSHOT)
-  const turnTimings = useSession(snapshot => snapshot.turnTimings)
-  const hasOlder = useSession(snapshot => snapshot.hasMore)
-  const loadingOlder = useSession(snapshot => snapshot.loadingOlder)
+  // Read the Workflow target from the shell-guaranteed Conversation standard
+  // hook instead of a plugin-provided hook: `views.get('workflow')` resolves
+  // the target snapshot for any registered view target. The target itself is
+  // activated by the slot inject factory (see src/client/index.ts).
+  const inspection = useConversation(
+    (snapshot: ConversationSnapshot) =>
+      snapshot.views.get('workflow') ?? EMPTY_WORKFLOW_SNAPSHOT,
+  )
+  const activeTargets = useConversation(
+    (snapshot: ConversationSnapshot) => snapshot.activeTargets,
+  )
+  const hasOlder = useSession((snapshot: SessionSnapshot) => snapshot.hasMore)
+  const loadingOlder = useSession((snapshot: SessionSnapshot) => snapshot.loadingOlder)
   const layout = useMemo(() => deriveWorkflowLayout({
     nodes: inspection.eventNodes,
     eventLocations: inspection.eventLocations,
@@ -495,6 +507,25 @@ export function WorkflowView({
     requests: inspection.requests,
     callSchemas: inspection.callSchemas,
   }), [inspection])
+  // Turn timing boundaries derived from the assembled assistant requests
+  // (the shell's chat-legacy slice is intentionally not depended on).
+  const turnTimings = useMemo(() => {
+    const timings = new Map<number, { startTime: number; endTime?: number }>()
+    for (const request of inspection.requests) {
+      if (request.purpose !== 'assistant') continue
+      const previous = timings.get(request.turn)
+      const entry = { startTime: request.startedAt }
+      if (previous === undefined || request.startedAt < previous.startTime) {
+        timings.set(request.turn, request.completedAt === null
+          ? entry
+          : { ...entry, endTime: request.completedAt })
+      } else if (request.completedAt !== null
+        && (previous.endTime === undefined || request.completedAt > previous.endTime)) {
+        timings.set(request.turn, { ...previous, endTime: request.completedAt })
+      }
+    }
+    return timings
+  }, [inspection.requests])
   const model = useMemo(
     () => deriveWorkflowModel(layout, inspection.requests, turnTimings),
     [inspection.requests, layout, turnTimings],
@@ -587,7 +618,21 @@ export function WorkflowView({
         </aside>
         <main className={css.main}>
           {selectedTurn === undefined
-            ? <div className={css.empty}>{t('workflow.emptyTurns')}</div>
+            ? (
+              <div className={css.empty}>
+                {t('workflow.emptyTurns')}
+                <details className={css.debug} data-workflow-debug="">
+                  <summary>Workflow debug</summary>
+                  <pre>{JSON.stringify({
+                    activeTargets: [...activeTargets],
+                    eventNodes: inspection.eventNodes.length,
+                    requests: inspection.requests.length,
+                    runningCalls: inspection.runningCalls.length,
+                    partial: inspection.partial === null ? null : 'present',
+                  }, null, 2)}</pre>
+                </details>
+              </div>
+            )
             : (
               <>
                 <header className={css.turnHeader}>

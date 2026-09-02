@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   ConversationLocation, ConversationMatch, ConversationNodeContext,
-  ConversationNodeDefinition,
-} from '@deepseek-ai/dsh-client-runtime/client'
+  ConversationNodeDefinition, ConversationStartMatch,
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type {
   WorkflowAssistantRequest, WorkflowConversationViewNode,
@@ -18,7 +18,10 @@ const OPEN_LOCATION: ConversationLocation = {
     end: undefined,
     status: 'open',
     steps: [],
-    data: { get: () => undefined },
+    data: {
+      get: () => undefined,
+      source: () => ({ getSnapshot: () => undefined, subscribe: () => () => {} }),
+    },
   },
   step: {
     turn: 1,
@@ -26,7 +29,10 @@ const OPEN_LOCATION: ConversationLocation = {
     start: undefined,
     end: undefined,
     status: 'open',
-    data: { get: () => undefined },
+    data: {
+      get: () => undefined,
+      source: () => ({ getSnapshot: () => undefined, subscribe: () => () => {} }),
+    },
   },
 }
 
@@ -39,16 +45,22 @@ function event<T extends SessionEvent['type']>(
 }
 
 function match(value: SessionEvent, role: ConversationMatch['role']): ConversationMatch {
-  return { event: value, view: undefined, role, location: OPEN_LOCATION }
+  return { event: value, role, location: OPEN_LOCATION }
+}
+
+function startMatch(value: SessionEvent): ConversationStartMatch {
+  return { event: value, role: 'start', location: OPEN_LOCATION }
 }
 
 function assistantDefinition(): ConversationNodeDefinition<unknown> {
   let definition: ConversationNodeDefinition<unknown> | undefined
   const ctx = {
-    conversationEvents: {
-      register: (candidate: ConversationNodeDefinition<unknown>) => {
-        if (candidate.kind === 'workflow-assistant-step') definition = candidate
-        return () => {}
+    uiConversation: {
+      events: {
+        register: (candidate: ConversationNodeDefinition<unknown>) => {
+          if (candidate.kind === 'workflow-assistant-step') definition = candidate
+          return () => {}
+        },
       },
     },
   } as unknown as Context
@@ -59,9 +71,12 @@ function assistantDefinition(): ConversationNodeDefinition<unknown> {
 
 function project(events: readonly SessionEvent[]): WorkflowConversationViewNode {
   const definition = assistantDefinition()
-  const matches = events.map((value, index) => match(value, index === 0 ? 'start' : 'update'))
-  const start = matches[0]
+  const start = events[0] === undefined ? undefined : startMatch(events[0])
   if (start === undefined) throw new Error('projection requires a start event')
+  const matches: readonly ConversationMatch[] = [
+    start,
+    ...events.slice(1).map((value, index) => match(value, index === 0 ? 'update' : 'update')),
+  ]
   const reader = { previous: () => undefined }
   let state = definition.start({
     key: 'workflow-assistant-step\u00001:1',
