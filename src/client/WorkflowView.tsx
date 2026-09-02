@@ -166,6 +166,36 @@ function detailKey(target: DetailTarget): string {
   return target.kind === 'tool' ? `${target.key}:tool:${target.tool}` : `${target.key}:${target.kind}`
 }
 
+/** Minimal rectangle segment consumed by the expanded-detail scroll math. */
+export interface WorkflowViewportRect {
+  readonly top: number
+  readonly bottom: number
+}
+
+/**
+ * Scroll delta that brings the expanded detail panel into the usable area above
+ * the floating composer: the panel's bottom must clear the composer (plus a
+ * 16px margin); a panel taller than the usable area reveals its top instead so
+ * the reserved bottom padding keeps the rest scrollable.
+ * @param scrollerRect - the call scroller viewport rect.
+ * @param panelRect - the expanded detail panel rect (below its flow card).
+ * @param composerHeight - live height of the overlaid composer seat.
+ * @returns the signed scrollTop adjustment (positive pulls content up).
+ */
+export function detailPanelScrollDelta(
+  scrollerRect: WorkflowViewportRect,
+  panelRect: WorkflowViewportRect,
+  composerHeight: number,
+): number {
+  const safeBottom = scrollerRect.bottom - composerHeight - 16
+  const bottomOverflow = panelRect.bottom - safeBottom
+  if (bottomOverflow > 0) {
+    const topAfter = panelRect.top - bottomOverflow
+    return topAfter >= scrollerRect.top ? bottomOverflow : -(scrollerRect.top - panelRect.top)
+  }
+  return panelRect.top < scrollerRect.top ? -(scrollerRect.top - panelRect.top) : 0
+}
+
 function FlowArrow() {
   return <ArrowRight className={css.arrow} size={18} strokeWidth={1.6} aria-hidden="true" />
 }
@@ -374,7 +404,11 @@ function DetailPanel({
     ]
   }
   return (
-    <section className={css.detailPanel} aria-label={title}>
+    <section
+      className={css.detailPanel}
+      data-workflow-detail-panel=""
+      aria-label={title}
+    >
       <header>
         <strong>{title}</strong>
         <button type="button" onClick={onClose} aria-label={t('workflow.details.close')}>
@@ -572,6 +606,28 @@ export function WorkflowView({
     event.preventDefault()
   }, [])
 
+  // Expanded model-call detail opens below its flow card; instead of letting it
+  // hang under the floating composer, pull the panel up so its bottom clears the
+  // input bar (the view reserves that space via --dsh-workflow-composer-clearance).
+  useEffect(() => {
+    if (detail === null) return
+    const frame = requestAnimationFrame(() => {
+      const scroller = scrollRef.current
+      if (scroller === null) return
+      const panel = scroller.querySelector('[data-workflow-detail-panel]')
+      if (panel === null) return
+      const rawHeight = getComputedStyle(scroller).getPropertyValue('--dsh-composer-height')
+      const composerHeight = Number.parseFloat(rawHeight)
+      const composer = Number.isFinite(composerHeight) ? composerHeight : 152
+      scroller.scrollTop += detailPanelScrollDelta(
+        scroller.getBoundingClientRect(),
+        panel.getBoundingClientRect(),
+        composer,
+      )
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [detail])
+
   return (
     <section
       className={css.root}
@@ -599,7 +655,13 @@ export function WorkflowView({
                 key={turn.turn}
                 turn={turn}
                 selected={turn.turn === selectedTurn?.turn}
-                onSelect={() => { setChosenTurn(turn.turn); setDetail(null) }}
+                onSelect={() => {
+                  setChosenTurn(turn.turn)
+                  setDetail(null)
+                  // Start the selected turn from its first model call instead of
+                  // inheriting the previous turn's scroll offset.
+                  scrollRef.current?.scrollTo({ top: 0 })
+                }}
                 t={t}
               />
             ))}

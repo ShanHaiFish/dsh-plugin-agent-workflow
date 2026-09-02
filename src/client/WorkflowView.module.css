@@ -1,4 +1,9 @@
 .root {
+  /* The conversation shell floats the composer over this view
+     (data-conversation-composer-overlay). Reserve its live height so the
+     scroll regions can always clear the input bar on top; falls back to the
+     default seat height (152px) before the shell publishes the first frame. */
+  --dsh-workflow-composer-clearance: calc(var(--dsh-composer-height, 152px) + 16px);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -63,7 +68,20 @@
   font-size: 12px;
 }
 .turns > header span { color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
-.turnList { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0; padding: 10px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.turnList {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px;
+  /* Clear the floating composer: the sidebar's last turn must stay tappable
+     above the input bar, which overlays the full column width. */
+  padding-bottom: calc(var(--dsh-workflow-composer-clearance, 0px) + 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
 
 .turnItem {
   position: relative;
@@ -101,7 +119,7 @@
   justify-content: center;
   gap: 6px;
   min-height: 36px;
-  margin: 0 10px 10px;
+  margin: 0 10px calc(var(--dsh-workflow-composer-clearance, 0px) + 12px);
   color: var(--dsw-alias-label-secondary);
   background: transparent;
   border: 1px solid var(--dsw-alias-border-l2);
@@ -136,7 +154,9 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 14px 16px 24px;
+  /* Bottom clearance keeps the latest model-call card — and the detail panel
+     it expands — fully visible above the floating composer. */
+  padding: 14px 16px calc(var(--dsh-workflow-composer-clearance, 0px) + 24px);
   box-sizing: border-box;
   scrollbar-gutter: stable;
 }
