@@ -8,7 +8,7 @@
 `dsh-plugin-agent-workflow` 是一个可独立安装的 DeepSeek Harness Web UI 插件（静态 bundle 插件）：
 在对话与轨迹之外新增“工作流”标签页，以用户对话轮次为入口，将模型请求、响应与工具调用呈现为执行链路。
 
-浏览器端 React 插件（`src/client/`，宿主端无行为），适配 dsh@0.1.2-alpha.4。
+浏览器端 React 插件（`src/client/`，宿主端无行为），适配 dsh@0.1.5-rc.1。
 完整产品说明见 `README.md`，界面截图见 `docs/images/`。
 
 ## Commands
@@ -20,7 +20,7 @@
 | Test（全部） | `pnpm test`（先构建再跑全部测试） |
 | Build | `pnpm run build`（clean + tsdown + tsc 类型声明） |
 | Pack | `pnpm pack`（产出可安装的 `dsh-plugin-agent-workflow-<version>.tgz`） |
-| 安装到本机 dsh | `npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 plugin --profile web add ./dsh-plugin-agent-workflow-<version>.tgz --workspace-root` |
+| 安装到本机 dsh | `npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin --profile web add ./dsh-plugin-agent-workflow-<version>.tgz --workspace-root` |
 
 > 出处：`package.json` scripts、`.github/workflows/ci.yml`（安装依赖用 `pnpm install --frozen-lockfile`）、
 > `README.md`「本地开发与打包」「安装」段。
@@ -39,8 +39,9 @@ src/
     WorkflowView.tsx      “工作流”页主组件（独立滚动 + 虚拟化渲染）
     WorkflowJsonInspector.tsx  可折叠 JSON 树组件（请求/响应正文检视）
     projection/           投影注册：assistant / compaction / message / request-header /
-                          surface / tool 定义 + snapshot-builder（装配工作流视图）+
-                          contract（类型契约）+ event-projection（内联块/来源辅助函数）
+                          surface / system-message / tool 定义 + snapshot-builder
+                          （装配工作流视图）+ contract（类型契约）+
+                          event-projection（内联块/来源辅助函数）
 tests/
   *.client.spec.ts(x)     vitest 单测（include: tests/**/*.spec.ts(x)）
   mocks/                  ui-primitives 替身（vitest 别名指向）
@@ -54,7 +55,7 @@ docs/images/              README 界面截图
 
 - CI 质量闸门 = typecheck + test + pack（`.github/workflows/ci.yml`）；三者在本地推代码前都必须通过。
 - 只读 Session 已记录的事件并展示，不得向模型请求注入消息、提示词或工具（`README.md`「数据来源」）。
-- 适配面固定 dsh@0.1.2-alpha.4：全部 `@deepseek-ai/*` 依赖钉在 `0.1.2-alpha.4`（`package.json`）；升级 DSH 需同步升级本插件依赖（`README.md`「兼容版本」）。
+- 适配面固定 dsh@0.1.5-rc.1：全部 `@deepseek-ai/*` 依赖钉在 `0.1.5-rc.1`（`package.json`）；升级 DSH 需同步升级本插件依赖（`README.md`「兼容版本」）。
 - 发布用 `v0.2.x` 标签，GitHub 安装固定版本形如 `github:<owner>/<repo>#v0.2.1`（`README.md`「从 GitHub 安装」）。
 - 安装行为唯一由 `cordis.patch.yml` 定义（插入 `ui-workflow` 行）；不得改动内置“轨迹”功能。
 
@@ -64,6 +65,7 @@ docs/images/              README 界面截图
 |------|------|
 | 工作流视图与投影 | `src/client/index.ts`（服务注入与目标激活）+ `src/client/projection/contract.ts`（契约）+ 对应 `*-definition.ts` + `snapshot-builder.ts` |
 | 数据派生逻辑 | `src/client/workflow-model.ts` |
+| 系统提示词与请求头 | `projection/system-message-definition.ts` + `projection/request-header-definition.ts`（后者经 `reader.previous` 读前者的状态） |
 | JSON 检视组件 | `src/client/WorkflowJsonInspector.tsx` |
 | 构建 / 打包配置 | `tsdown.config.ts`（externals / onlyBundle / CSS 内联） |
 | 测试（涉及注入服务） | `tests/mocks/ui-primitives.tsx`（配套 `vitest.config.ts` 的别名）；`tests/registration.client.spec.tsx` 的服务假实现 |
@@ -75,10 +77,13 @@ docs/images/              README 界面截图
 - 客户端产物是 CJS + `window.__ModuleLoader__.load(...)` 包装（`tsdown.config.ts` 的 banner/footer）；输出固定为 `lib/client.js`，入口名与 outDir 不许改。
 - 新增运行时依赖（值导入）必须进 `tsdown.config.ts` 的 `onlyBundle` 白名单，否则构建失败；`CLIENT_EXTERNALS`（react、cordis、dsh-client-ui-primitives）保持外部 import，不打包。
 - CSS 只能用 `.module.css`：由 tsdown 的 cssModulePlugin 内联为运行时注入的 `<style data-plugin-css>`（自动去重）；不要引入普通 CSS 或 CSS 框架。
-- 工作流视图数据契约（alpha.4）：视图经 `conversation.view` 的**外壳标准钩子** `useConversation` 读取 `views.get('workflow')`，不依赖插件自定义钩子；工作流目标由 `src/client/index.ts` 的槽注入工厂对 `uiConversation.binding(id).target('workflow')` 显式 `subscribe` 激活；轮次计时由装配后的 assistant 请求自推导（不要回退到 chat legacy 切片或自定义标准钩子）。
+- 工作流视图数据契约（0.1.5）：视图经 `conversation.view` 的**外壳标准钩子** `useConversation` 读取 `views.get('workflow')`，不依赖插件自定义钩子；工作流目标由 `src/client/index.ts` 的槽注入工厂对 `uiConversation.binding(id).target('workflow')` 显式 `subscribe` 激活；轮次计时由装配后的 assistant 请求自推导（不要回退到 chat legacy 切片或自定义标准钩子）。
+- 系统提示词自 0.1.5 起不再位于请求头（`EpochHeader.system` 已删除），改由 `system/message` 表面事件承载：`projection/system-message-definition.ts` 用 `uiConversation.inspectSystemPrompt` 追踪有效节点（**无 `target`、无 `buildViewNode` 的状态型 Context**，引擎要求二者同时声明或同时省略），`projection/request-header-definition.ts` 用 `uiConversation.inspectRequestPrompt` 组装请求头。两个 inspector 由服务提供——客户端 bundle 禁止跨插件值导入，勿改成直接 import。
+- 事件词表必须跟随内置轨迹（`@deepseek-ai/dsh-client-ui-trajectory`）：升级 DSH 后先比对该包匹配的事件类型集合。改名（如 `assistant/chunk`→`assistant/live-chunk`、`tool/code-dispatch*`→`tool/ptc-dispatch*`）**不会导致编译失败**，只会让对应区块静默消失；`tests/tool-dispatch.client.spec.ts` 是针对该类改名的回归护栏。旧会话日志由 dsh 的 `dsh-session-format-*` 迁移链自动升级，**不要**为旧事件名保留兼容分支。
 - 客户端类型面依赖若干 `@deepseek-ai/*` 包的 module augmentation（`dsh-client-ui-session`（useSession/uiSession）、`dsh-client-ui-renderer`（ctx.slots）、`dsh-api-session-controller`（ctx.sessions/SessionFace）、`dsh-llm-retry`（`llm/retry` 事件）等）：依赖以 `import type {} from '...'` 形式在 `src/client/index.ts` 引入才生效；它们只是 devDependency（产出的 d.ts 不引用，安装消费方无需声明）。
 - 测试禁止直接 import 真实的 `@deepseek-ai/dsh-client-ui-primitives`——`vitest.config.ts` 已把它别名到 `tests/mocks/`。
 - 包管理器一律 pnpm（`packageManager: pnpm@11.7.0`，CI 用 `--frozen-lockfile`）；改依赖必须同步 `pnpm-lock.yaml`。
+- 根目录 `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude` 必须提交：pnpm 11 内置 24 小时发布时限策略（`minimumReleaseAge`，未在配置中显式设置即为默认）会拒绝过新的 dsh 预发布版，使 CI 的 `pnpm install --frozen-lockfile` **直接失败**。该名单由 pnpm 在升级依赖时自动生成，版本超过 24 小时后可整段删除。
 - `lib/`、`*.tgz`、`coverage/` 不提交（`.gitignore`）。
 
 ## 优先级

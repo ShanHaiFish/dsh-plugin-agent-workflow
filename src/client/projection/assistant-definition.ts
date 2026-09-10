@@ -106,7 +106,7 @@ function addUsage(current: UsageValue | undefined, next: UsageValue): UsageValue
 }
 
 function updateChunk(state: AssistantState, match: ConversationMatch): AssistantState {
-  if (match.event.type !== 'assistant/chunk') return state
+  if (match.event.type !== 'assistant/live-chunk') return state
   const chunk = match.event.data.chunk
   if (chunk.type === 'usage') {
     return { ...state, sawChunk: true, usage: addUsage(state.usage, chunk.usage) }
@@ -181,7 +181,7 @@ function fallbackState(context: ConversationNodeContext<AssistantState>): Assist
   let state: AssistantState | undefined
   for (const match of context.matches) {
     const event = match.event
-    if (event.type === 'assistant/chunk') {
+    if (event.type === 'assistant/live-chunk') {
       state ??= initialState(event.data.turn, event.data.step, event.seq, event.time, false)
       state = updateChunk(state, match)
     } else if (event.type === 'assistant/message') {
@@ -295,7 +295,7 @@ const workflowAssistantDefinition: ConversationNodeDefinition<AssistantState> = 
     if (event.type === 'step/start') {
       return { id: `${event.data.turn}:${event.data.step}`, role: 'start' }
     }
-    if (event.type === 'assistant/chunk'
+    if (event.type === 'assistant/live-chunk'
       || event.type === 'assistant/message'
       || event.type === 'llm/retry'
       || event.type === 'step/end') {
@@ -316,7 +316,7 @@ const workflowAssistantDefinition: ConversationNodeDefinition<AssistantState> = 
     )
   },
   update: (context, match) => {
-    if (match.event.type === 'assistant/chunk') return updateChunk(context.state, match)
+    if (match.event.type === 'assistant/live-chunk') return updateChunk(context.state, match)
     if (match.event.type === 'assistant/message') {
       return {
         ...context.state,
@@ -348,7 +348,7 @@ const workflowAssistantDefinition: ConversationNodeDefinition<AssistantState> = 
   },
   publication: (match) => {
     if (match.event.type === 'step/start') return 'none'
-    if (match.event.type !== 'assistant/chunk') return 'immediate'
+    if (match.event.type !== 'assistant/live-chunk') return 'immediate'
     const type = match.event.data.chunk.type
     return type === 'usage' || type === 'finish' ? 'none' : 'animation-frame'
   },

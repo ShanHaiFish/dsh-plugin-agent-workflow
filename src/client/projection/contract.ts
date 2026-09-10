@@ -1,7 +1,7 @@
 import type {
   AssistantMessageNode, ConversationLocation, ConversationNode,
   ConversationPromptSnapshot, ConversationViewNode, PartialAssistant,
-  RequestPromptChange, RequestView, RunningToolCall, ToolCallBlock,
+  RequestPromptChange, RequestView, RunningToolCall, SystemPromptState, ToolCallBlock,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { Message } from '@deepseek-ai/dsh-llm/types'
 
@@ -28,13 +28,29 @@ export interface WorkflowRequestHeaderState {
   readonly location: ConversationLocation
 }
 
+/**
+ * Loaded system surface plus the latest request facts changed by a system node.
+ *
+ * dsh 0.1.5-rc.1 moved the rendered system prompt out of `EpochHeader` and onto
+ * the `system/message` surface event, so the Workflow target tracks it through
+ * `uiConversation.inspectSystemPrompt` and hands the effective node to
+ * `uiConversation.inspectRequestPrompt` when a request header is assembled.
+ */
+export interface WorkflowSystemMessageState extends SystemPromptState {
+  /**
+   * Synthesized request-header fact anchored at the system node that introduced
+   * or changed the prompt; absent when no earlier header could lend its config.
+   */
+  readonly header?: WorkflowRequestHeaderState
+}
+
 /** One model-visible surface operation retained for request-boundary reconstruction. */
 export interface WorkflowSurfaceRecord {
   readonly seq: number
   readonly message: Message | null
   readonly operation:
     | { readonly kind: 'append' }
-    | { readonly kind: 'replace'; readonly start: number; readonly end: number }
+    | { readonly kind: 'replace'; readonly startSeq: number; readonly endSeq: number }
 }
 
 /** One independently assembled contribution to the legacy Workflow ledger. */

@@ -39,10 +39,10 @@
 当前 `0.2.x` 版本适配：
 
 ```text
-dsh@0.1.2-alpha.4
+dsh@0.1.5-rc.1
 ```
 
-DeepSeek Harness 仍处于预发布阶段，不同 RC / alpha 版本的客户端接口可能发生变化。升级 DSH 后，需要同时安装与新版本适配的插件版本。`0.1.x` 仅适配 `dsh@0.1.0-rc.8`。
+DeepSeek Harness 仍处于预发布阶段，不同 RC / alpha 版本的客户端接口可能发生变化。升级 DSH 后，需要同时安装与新版本适配的插件版本。`0.2.x` 适配 `dsh@0.1.2-alpha.4`，`0.1.x` 仅适配 `dsh@0.1.0-rc.8`。
 
 ## 安装
 
@@ -51,34 +51,34 @@ DeepSeek Harness 仍处于预发布阶段，不同 RC / alpha 版本的客户端
 假设安装包位于当前目录：
 
 ```sh
-npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 plugin \
+npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
-  add ./dsh-plugin-agent-workflow-0.2.0.tgz \
+  add ./dsh-plugin-agent-workflow-0.2.1.tgz \
   --workspace-root
 ```
 
 检查安装结果：
 
 ```sh
-npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 plugin \
+npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
   list --depth 0
 ```
 
-列表中出现 `dsh-plugin-agent-workflow 0.2.0` 表示安装成功。重启 Web UI 后即可看到“工作流”标签页：
+列表中出现 `dsh-plugin-agent-workflow 0.2.1` 表示安装成功。重启 Web UI 后即可看到“工作流”标签页：
 
 ```sh
-npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 web
+npx --yes @deepseek-ai/dsh@0.1.5-rc.1 web
 ```
 
 ### 从 GitHub 安装
 
-仓库发布 `v0.2.0` 标签后，可以直接安装固定版本：
+仓库发布 `v0.2.1` 标签后，可以直接安装固定版本：
 
 ```sh
-npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 plugin \
+npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
-  add github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.2.0 \
+  add github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.2.1 \
   --workspace-root
 ```
 
@@ -87,7 +87,7 @@ npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 plugin \
 ## 卸载
 
 ```sh
-npx --yes @deepseek-ai/dsh@0.1.2-alpha.4 plugin \
+npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
   remove dsh-plugin-agent-workflow \
   --workspace-root
@@ -113,8 +113,9 @@ pnpm pack
 - 汇总数据只覆盖客户端能够加载的 Session 历史；无法取得的更早事件不会计入统计。
 - JSON 展开状态和卡片选中状态保存在当前页面中，不提供可分享的深链接。
 - 同一次响应中的多个工具调用以可横向滚动的线性序列展示，不绘制并行分支图。
-- `0.2.x` 的轮次耗时取自会话视图的兼容计时切片（chat `legacy.turnTimings`）；不可用时退化为按请求起止时间推导。
-- 历史页中的紧凑分块记录（chunk rows）不含与消息面相关的标记，投影会直接跳过，与内置轨迹行为一致。
+- 轮次耗时由装配后的 assistant 请求自行推导，不依赖 chat 的兼容计时切片。
+- 客户端专属的瞬时流式行（`assistant/live-chunk`）不携带消息面标记，投影会直接跳过，与内置轨迹行为一致。
+- 系统提示词以「每个请求实际生效的内容」呈现；dsh 0.1.5 起它由 `system/message` 表面节点承载，历史中途的原地改写不再单独成卡。
 
 ## License
 

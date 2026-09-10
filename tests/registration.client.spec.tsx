@@ -81,6 +81,8 @@ describe('Workflow plugin registration', () => {
     expect(entry?.options.inject('session-1' as SessionId)).toMatchObject({ loadOlder: expect.any(Function) })
     expect(result.viewDefinitions.map(definition => definition.target)).toContain('workflow')
     expect(result.eventDefinitions.some(definition => definition.kind === 'workflow-assistant-step')).toBe(true)
+    expect(result.eventDefinitions.some(definition => definition.kind === 'workflow-request-header')).toBe(true)
+    expect(result.eventDefinitions.some(definition => definition.kind === 'workflow-system-message')).toBe(true)
   })
 
   it('detects paging changes from the Workflow target rather than raw Session snapshot identity', async () => {

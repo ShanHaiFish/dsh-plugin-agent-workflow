@@ -11,9 +11,13 @@ import {
 import { workflowNode } from './definition-common.ts'
 import type { WorkflowSurfaceRecord } from './contract.ts'
 
-/** Session events are plain names; compact history rows use `chunkrow/*` and carry no surface markers. */
+/**
+ * Session events are plain names; the client-only live chunk row carries no
+ * surface markers. `chunkrow/*` (dsh <= 0.1.2-alpha.4) was removed in
+ * 0.1.5-rc.1 and replaced by the single `assistant/live-chunk` transient event.
+ */
 function isSessionEvent(event: SessionEventLike): event is SessionEvent {
-  return !event.type.startsWith('chunkrow/')
+  return event.type !== 'assistant/live-chunk'
 }
 
 const workflowSurfaceDefinition: ConversationNodeDefinition<WorkflowSurfaceRecord> = {
@@ -33,7 +37,7 @@ const workflowSurfaceDefinition: ConversationNodeDefinition<WorkflowSurfaceRecor
       message: deriveEventMessage(event),
       operation: event.surfaceOp === 'append'
         ? { kind: 'append' }
-        : { kind: 'replace', start: event.surfaceOp.start, end: event.surfaceOp.end },
+        : { kind: 'replace', startSeq: event.surfaceOp.startSeq, endSeq: event.surfaceOp.endSeq },
     }
   },
   update: context => context.state,

@@ -149,8 +149,8 @@ function applySurfaceRecord(entries: SurfaceEntry[], record: WorkflowSurfaceReco
     entries.push(next)
     return
   }
-  const start = entries.findIndex(entry => entry.seq === operation.start)
-  const end = entries.findIndex(entry => entry.seq === operation.end)
+  const start = entries.findIndex(entry => entry.seq === operation.startSeq)
+  const end = entries.findIndex(entry => entry.seq === operation.endSeq)
   if (start === -1 || end === -1 || start > end) {
     // An initial tail window can contain a replacement whose shadowed range is
     // still outside the loaded prefix. Workflow pages that prefix immediately;

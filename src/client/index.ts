@@ -16,6 +16,7 @@ import { registerWorkflowAssistantDefinition } from './projection/assistant-defi
 import { registerWorkflowCompactionDefinitions } from './projection/compaction-definition.ts'
 import { registerWorkflowMessageDefinitions } from './projection/message-definitions.ts'
 import { registerWorkflowRequestHeaderDefinition } from './projection/request-header-definition.ts'
+import { registerWorkflowSystemMessageDefinition } from './projection/system-message-definition.ts'
 import { registerWorkflowConversationView } from './projection/snapshot-builder.ts'
 import { registerWorkflowSurfaceDefinition } from './projection/surface-definition.ts'
 import { registerWorkflowToolDefinition } from './projection/tool-definition.ts'
@@ -39,6 +40,10 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workflow: dictionaries')
   registerWorkflowMessageDefinitions(ctx)
   registerWorkflowSurfaceDefinition(ctx)
+  // Tracks the effective `system/message` surface node; the request-header
+  // Definition below reads it through `reader.previous` when it canonicalizes
+  // each request's prompt.
+  registerWorkflowSystemMessageDefinition(ctx)
   registerWorkflowRequestHeaderDefinition(ctx)
   registerWorkflowAssistantDefinition(ctx)
   registerWorkflowToolDefinition(ctx)

@@ -6,6 +6,9 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type {
+  AssistantLiveChunkEvent, SessionEventLike,
+} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {
   WorkflowAssistantRequest, WorkflowConversationViewNode,
 } from '../src/client/projection/contract.ts'
 import { registerWorkflowAssistantDefinition } from '../src/client/projection/assistant-definition.ts'
@@ -44,11 +47,40 @@ function event<T extends SessionEvent['type']>(
   return { type, seq, time: seq * 100, data } as Extract<SessionEvent, { type: T }>
 }
 
-function match(value: SessionEvent, role: ConversationMatch['role']): ConversationMatch {
-  return { event: value, role, location: OPEN_LOCATION }
+/**
+ * One client-only live streaming row.
+ *
+ * dsh 0.1.5-rc.1 replaced the durable `assistant/chunk` event with this
+ * transient presentation event; it is not a `SessionEvent`, so it rides the
+ * update role only.
+ */
+function liveChunk(
+  seq: number,
+  chunk: AssistantLiveChunkEvent['data']['chunk'],
+): AssistantLiveChunkEvent {
+  return {
+    type: 'assistant/live-chunk',
+    seq,
+    time: seq * 100,
+    data: {
+      attemptId: `attempt-${seq}` as never,
+      turn: 1,
+      step: 1,
+      chunk,
+    },
+  }
 }
 
-function startMatch(value: SessionEvent): ConversationStartMatch {
+function match(value: SessionEventLike): ConversationMatch {
+  return { event: value, role: 'update', location: OPEN_LOCATION }
+}
+
+function startMatch(value: SessionEventLike): ConversationStartMatch {
+  // A Context opens on a durable Session event: the client-only live chunk row
+  // can only ever arrive as an update Match.
+  if (value.type === 'assistant/live-chunk') {
+    throw new Error('a live chunk row cannot open an assistant projection')
+  }
   return { event: value, role: 'start', location: OPEN_LOCATION }
 }
 
@@ -69,13 +101,13 @@ function assistantDefinition(): ConversationNodeDefinition<unknown> {
   return definition
 }
 
-function project(events: readonly SessionEvent[]): WorkflowConversationViewNode {
+function project(events: readonly SessionEventLike[]): WorkflowConversationViewNode {
   const definition = assistantDefinition()
   const start = events[0] === undefined ? undefined : startMatch(events[0])
   if (start === undefined) throw new Error('projection requires a start event')
   const matches: readonly ConversationMatch[] = [
     start,
-    ...events.slice(1).map((value, index) => match(value, index === 0 ? 'update' : 'update')),
+    ...events.slice(1).map(value => match(value)),
   ]
   const reader = { previous: () => undefined }
   let state = definition.start({
@@ -129,6 +161,9 @@ function assistantMessage(interrupted = false): SessionEvent<'assistant/message'
       content: [{ type: 'text', text: 'partial answer' }],
       source: { kind: 'model', provider: 'test', model: 'model' },
     },
+    // dsh 0.1.5-rc.1 carries the exact timed model stream on the durable
+    // assistant/message record; an empty stream is the minimal coherent value.
+    stream: [],
     ...(interrupted ? { interrupted: true as const } : {}),
   })
 }
@@ -172,11 +207,7 @@ describe('rc.8 assistant projection', () => {
   })
 
   it('uses completedSeq only for a chunk-only interruption fallback', () => {
-    const chunk = event('assistant/chunk', 2, {
-      turn: 1,
-      step: 1,
-      chunk: { type: 'text-delta', index: 0, text: 'partial answer' },
-    })
+    const chunk = liveChunk(2, { type: 'text-delta', index: 0, text: 'partial answer' })
     const contribution = project([STEP_START, chunk, STEP_END])
     if (contribution.data.kind !== 'assistant') throw new Error('expected assistant contribution')
 
