@@ -56,7 +56,7 @@ docs/images/              README 界面截图
 - CI 质量闸门 = typecheck + test + pack（`.github/workflows/ci.yml`）；三者在本地推代码前都必须通过。
 - 只读 Session 已记录的事件并展示，不得向模型请求注入消息、提示词或工具（`README.md`「数据来源」）。
 - 适配面固定 dsh@0.1.5-rc.1：全部 `@deepseek-ai/*` 依赖钉在 `0.1.5-rc.1`（`package.json`）；升级 DSH 需同步升级本插件依赖（`README.md`「兼容版本」）。
-- 发布用 `v0.2.x` 标签，GitHub 安装固定版本形如 `github:<owner>/<repo>#v0.2.1`（`README.md`「从 GitHub 安装」）。
+- 发布用 `v0.3.x` 标签，GitHub 安装固定版本形如 `github:<owner>/<repo>#v0.3.0`（`README.md`「从 GitHub 安装」）。
 - 安装行为唯一由 `cordis.patch.yml` 定义（插入 `ui-workflow` 行）；不得改动内置“轨迹”功能。
 
 ## 改哪块之前先读什么

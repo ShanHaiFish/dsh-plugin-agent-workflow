@@ -36,7 +36,7 @@
 
 ## 兼容版本
 
-当前 `0.2.x` 版本适配：
+当前 `0.3.x` 版本适配：
 
 ```text
 dsh@0.1.5-rc.1
@@ -53,7 +53,7 @@ DeepSeek Harness 仍处于预发布阶段，不同 RC / alpha 版本的客户端
 ```sh
 npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
-  add ./dsh-plugin-agent-workflow-0.2.1.tgz \
+  add ./dsh-plugin-agent-workflow-0.3.0.tgz \
   --workspace-root
 ```
 
@@ -65,7 +65,7 @@ npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   list --depth 0
 ```
 
-列表中出现 `dsh-plugin-agent-workflow 0.2.1` 表示安装成功。重启 Web UI 后即可看到“工作流”标签页：
+列表中出现 `dsh-plugin-agent-workflow 0.3.0` 表示安装成功。重启 Web UI 后即可看到“工作流”标签页：
 
 ```sh
 npx --yes @deepseek-ai/dsh@0.1.5-rc.1 web
@@ -73,12 +73,12 @@ npx --yes @deepseek-ai/dsh@0.1.5-rc.1 web
 
 ### 从 GitHub 安装
 
-仓库发布 `v0.2.1` 标签后，可以直接安装固定版本：
+仓库发布 `v0.3.0` 标签后，可以直接安装固定版本：
 
 ```sh
 npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
-  add github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.2.1 \
+  add github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.3.0 \
   --workspace-root
 ```
 
