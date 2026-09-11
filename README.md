@@ -78,7 +78,7 @@ npx --yes @deepseek-ai/dsh@0.1.5-rc.1 web
 ```sh
 npx --yes @deepseek-ai/dsh@0.1.5-rc.1 plugin \
   --profile web \
-  add github:xuanyuanzhifeng/dsh-plugin-agent-workflow#v0.3.0 \
+  add github:ShanHaiFish/dsh-plugin-agent-workflow#v0.3.0 \
   --workspace-root
 ```
 

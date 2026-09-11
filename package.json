@@ -13,12 +13,12 @@
   "packageManager": "pnpm@11.7.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xuanyuanzhifeng/dsh-plugin-agent-workflow.git"
+    "url": "git+https://github.com/ShanHaiFish/dsh-plugin-agent-workflow.git"
   },
   "bugs": {
-    "url": "https://github.com/xuanyuanzhifeng/dsh-plugin-agent-workflow/issues"
+    "url": "https://github.com/ShanHaiFish/dsh-plugin-agent-workflow/issues"
   },
-  "homepage": "https://github.com/xuanyuanzhifeng/dsh-plugin-agent-workflow#readme",
+  "homepage": "https://github.com/ShanHaiFish/dsh-plugin-agent-workflow#readme",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "exports": {
